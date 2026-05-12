@@ -102,29 +102,30 @@ function resolveNamespace(env: unknown): KeyValueNamespace | null {
   return candidate as KeyValueNamespace;
 }
 
-const ls: KeyValueNamespace = {
-  get: (key: string) => {
-    try {
-      return localStorage.getItem(key);
-    } catch {
-      return null;
+function createFallbackStore(): KeyValueNamespace {
+  const store = new Map<string, string>();
+  return {
+    get: (key: string) => store.get(key) ?? null,
+    set: (key: string, value: string) => { store.set(key, value); },
+    delete: (key: string) => { store.delete(key); },
+  };
+}
+
+function tryLocalStorage(): KeyValueNamespace | null {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage !== null) {
+      return {
+        get: (key: string) => localStorage.getItem(key),
+        set: (key: string, value: string) => { localStorage.setItem(key, value); },
+        delete: (key: string) => { localStorage.removeItem(key); },
+      };
     }
-  },
-  set: (key: string, value: string) => {
-    try {
-      localStorage.setItem(key, value);
-    } catch {
-      /* quota exceeded */
-    }
-  },
-  delete: (key: string) => {
-    try {
-      localStorage.removeItem(key);
-    } catch {
-      /* noop */
-    }
-  },
-};
+  } catch { /* not available in Workers */ }
+  return null;
+}
+
+const sharedMemory = createFallbackStore();
+const ls: KeyValueNamespace = tryLocalStorage() ?? sharedMemory;
 
 async function readState(env: unknown): Promise<PersistedState> {
   const kv = resolveNamespace(env) ?? ls;
@@ -200,37 +201,76 @@ export function createSentinelStore(env: unknown) {
   };
 }
 
-export function buildRiskWarnings(riskScore: number): RiskWarning[] {
-  return [
-    {
-      id: "r1",
-      title: "CPI Print — 3 Hours",
-      level: riskScore >= 70 ? "HIGH" : "MEDIUM",
-      detail: "Consensus 2.9% YoY. Surprise tolerance ±10bps. Expect 1.5-3% spot volatility.",
-      timeWindow: "3h",
-    },
-    {
-      id: "r2",
-      title: "BTC ETF Outflow Stress",
-      level: riskScore >= 55 ? "MEDIUM" : "LOW",
-      detail: "Net outflows $312M over 48h. Threshold for cascade: $500M.",
-      timeWindow: "Active",
-    },
-    {
-      id: "r3",
-      title: "Funding Rate Extremes",
-      level: riskScore >= 50 ? "MEDIUM" : "LOW",
-      detail: "Perp funding on SOL > 0.08% / 8h. Crowded long — squeeze risk elevated.",
-      timeWindow: "Active",
-    },
-    {
-      id: "r4",
-      title: "Liquidity Thinning — Asia Open",
-      level: riskScore >= 80 ? "MEDIUM" : "LOW",
-      detail: "Order book depth at 1% reduced 22% vs 7d avg.",
-      timeWindow: "9h",
-    },
-  ];
+export function buildRiskWarnings(
+  riskScore: number,
+  context?: {
+    etfOutflowPct: number;
+    btcVolatility: number;
+    liquidityChangePct: number;
+    unlockPressure: number;
+    macroEvents: string[];
+  },
+): RiskWarning[] {
+  const warnings: RiskWarning[] = [];
+
+  // ETF outflow warning — content adapts to actual data
+  const etfOutflowPct = context?.etfOutflowPct ?? 8;
+  warnings.push({
+    id: "r1",
+    title: etfOutflowPct > 10
+      ? `ETF Outflow Stress — ${etfOutflowPct.toFixed(1)}%`
+      : "CPI Print — 3 Hours",
+    level: riskScore >= 70 ? "HIGH" : "MEDIUM",
+    detail: etfOutflowPct > 10
+      ? `Net outflows elevated at ${etfOutflowPct.toFixed(1)}%. Threshold for cascade: 15%.`
+      : "Consensus 2.9% YoY. Surprise tolerance ±10bps. Expect 1.5-3% spot volatility.",
+    timeWindow: "3h",
+  });
+
+  // Volatility warning
+  const btcVol = context?.btcVolatility ?? 2;
+  warnings.push({
+    id: "r2",
+    title: btcVol > 4
+      ? `BTC Volatility Spike — ${btcVol.toFixed(1)}x`
+      : "BTC ETF Outflow Stress",
+    level: riskScore >= 55 ? "MEDIUM" : "LOW",
+    detail: btcVol > 4
+      ? `Intraday volatility ${btcVol.toFixed(1)}x the 30-day mean. Position size accordingly.`
+      : "Net outflows $312M over 48h. Threshold for cascade: $500M.",
+    timeWindow: "Active",
+  });
+
+  // Funding / liquidity warning
+  const liqPct = context?.liquidityChangePct ?? 100;
+  warnings.push({
+    id: "r3",
+    title: liqPct > 120
+      ? `Liquidity Rotation — ${liqPct.toFixed(0)}%`
+      : "Funding Rate Extremes",
+    level: riskScore >= 50 ? "MEDIUM" : "LOW",
+    detail: liqPct > 120
+      ? `Order book depth shifted ${liqPct.toFixed(0)}% vs 7d avg. Monitor spread widening.`
+      : "Perp funding on SOL > 0.08% / 8h. Crowded long — squeeze risk elevated.",
+    timeWindow: "Active",
+  });
+
+  // Macro event / supply pressure warning
+  const hasMacro = (context?.macroEvents?.length ?? 0) > 0;
+  const unlockPct = context?.unlockPressure ?? 50;
+  warnings.push({
+    id: "r4",
+    title: hasMacro
+      ? `${context!.macroEvents.length} Active Macro Events`
+      : "Liquidity Thinning — Asia Open",
+    level: riskScore >= 80 ? "MEDIUM" : "LOW",
+    detail: hasMacro
+      ? `Calendar risk from ${context!.macroEvents.length} events. Reduce high-beta exposure.`
+      : `Unlock pressure at ${unlockPct.toFixed(0)}%. Order book depth at 1% reduced 22% vs 7d avg.`,
+    timeWindow: hasMacro ? "48h" : "9h",
+  });
+
+  return warnings;
 }
 
 export function buildAlertFromSignal(signal: {

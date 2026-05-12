@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { useEffect, useState } from "react";
 import { Activity, Brain, Zap, ShieldAlert, ArrowRight, TrendingUp } from "lucide-react";
 import { Logo } from "@/components/sentinel/Logo";
 import heroBg from "@/assets/hero-bg.jpg";
@@ -23,6 +24,19 @@ export const Route = createFileRoute("/")({
   }),
   component: Landing,
 });
+
+function AnimatedCount({ base, variance }: { base: number; variance: number }) {
+  const target = base + Math.floor(Math.random() * variance);
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (v) => Math.round(v).toLocaleString());
+
+  useEffect(() => {
+    const controls = animate(count, target, { duration: 2, ease: "easeOut" });
+    return controls.stop;
+  }, [count, target]);
+
+  return <motion.span>{rounded}</motion.span>;
+}
 
 function Landing() {
   return (
@@ -70,7 +84,7 @@ function Landing() {
         >
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs font-mono uppercase tracking-wider text-primary">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-dot" />
-            Live · 12,847 events analyzed today
+            Live · <AnimatedCount base={12000} variance={3000} /> events analyzed today
           </div>
 
           <h1 className="mt-6 font-display text-5xl md:text-7xl font-bold tracking-tight leading-[1.05]">

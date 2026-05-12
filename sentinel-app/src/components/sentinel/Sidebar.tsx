@@ -1,4 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { motion, useMotionValue, useTransform, animate } from "framer-motion";
+import { useEffect } from "react";
 import {
   LayoutDashboard,
   Radio,
@@ -7,8 +9,10 @@ import {
   Zap,
   ShieldAlert,
   Settings,
+  Beaker,
 } from "lucide-react";
 import { Logo } from "./Logo";
+import { useMarketSnapshot } from "@/hooks/use-market-snapshot";
 
 const nav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -20,7 +24,25 @@ const nav = [
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
 
+function AnimatedCount() {
+  const target = 12000 + Math.floor(Math.random() * 3000);
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (v) => Math.round(v).toLocaleString());
+
+  useEffect(() => {
+    const controls = animate(count, target, { duration: 2.5, ease: "easeOut" });
+    return controls.stop;
+  }, [count, target]);
+
+  return <motion.span>{rounded}</motion.span>;
+}
+
 export function Sidebar() {
+  const { snapshot } = useMarketSnapshot();
+  const allFallback = snapshot?.sourceStack
+    ? snapshot.sourceStack.every(s => !s.note.toLowerCase().includes("live"))
+    : true;
+
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-border bg-surface/40 backdrop-blur-md">
       <div className="px-5 py-5 border-b border-border">
@@ -41,12 +63,20 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
-      <div className="m-3 rounded-lg border border-border bg-surface-elevated/60 p-3">
+      <div className="m-3 rounded-lg border border-border bg-surface-elevated/60 p-3 space-y-2">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-dot" />
           AI Monitoring Active
         </div>
-        <div className="mt-1 font-mono text-xs text-foreground/80">12,847 events / 24h</div>
+        <div className="font-mono text-xs text-foreground/80">
+          <AnimatedCount /> events / 24h
+        </div>
+        {allFallback && (
+          <div className="flex items-center gap-1.5 pt-1 border-t border-border/40 text-[10px] text-warning/80">
+            <Beaker className="h-3 w-3" />
+            <span>Demo Mode</span>
+          </div>
+        )}
       </div>
     </aside>
   );

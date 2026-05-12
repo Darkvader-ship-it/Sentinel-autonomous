@@ -225,21 +225,28 @@ async function handleApiRoute(request: Request, url: URL, env: unknown): Promise
   });
 }
 
+export { handleApiRoute };
+
+export async function handleRequest(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const env = process.env ?? {};
+
+  if (url.pathname.startsWith("/app/api/")) {
+    return handleApiRoute(request, url, env);
+  }
+
+  try {
+    const handler = await getServerEntry();
+    const response = await handler.fetch(request, env, {});
+    return await normalizeCatastrophicSsrResponse(response);
+  } catch (error) {
+    console.error(error);
+    return brandedErrorResponse();
+  }
+}
+
 export default {
-  async fetch(request: Request, env: unknown, ctx: unknown) {
-    const url = new URL(request.url);
-
-    if (url.pathname.startsWith("/app/api/")) {
-      return handleApiRoute(request, url, env);
-    }
-
-    try {
-      const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
-    } catch (error) {
-      console.error(error);
-      return brandedErrorResponse();
-    }
+  async fetch(request: Request, env: unknown, _ctx: unknown) {
+    return handleRequest(request);
   },
 };

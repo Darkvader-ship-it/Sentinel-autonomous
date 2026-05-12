@@ -67,13 +67,14 @@ export function IntelligencePanel() {
     );
 
   useEffect(() => {
-    const controller = new AbortController();
+    let cancelled = false;
 
     async function loadSnapshot() {
       try {
-        const response = await fetch("/app/api/market", { signal: controller.signal });
-        if (!response.ok) return;
+        const response = await fetch("/app/api/market");
+        if (!response.ok || cancelled) return;
         const data = (await response.json()) as MarketSnapshot;
+        if (cancelled) return;
         setSnapshot({
           risk: data.risk,
           alerts: data.alerts,
@@ -87,7 +88,8 @@ export function IntelligencePanel() {
     }
 
     loadSnapshot();
-    return () => controller.abort();
+    const interval = setInterval(loadSnapshot, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   const topMovers = snapshot.tickers.slice(0, 4);

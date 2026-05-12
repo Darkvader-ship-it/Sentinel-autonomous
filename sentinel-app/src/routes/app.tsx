@@ -22,9 +22,15 @@ export const Route = createFileRoute("/app")({
 });
 
 function AppShell() {
-  const { user, isLoading, isReady, signUp, signIn, signOut, connectWallet } = useAuth();
+  const { user, isLoading, isReady, isGuest, signUp, signIn, signOut, connectWallet, loginAsGuest } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
 
   const isOnboardingRoute = location.pathname.startsWith("/app/onboarding");
   const onboardingComplete = user?.onboardingComplete ?? false;
@@ -45,18 +51,18 @@ function AppShell() {
   }
 
   if (!user && !isLoading) {
-    return <AuthForm onSignUp={signUp} onSignIn={signIn} onConnectWallet={connectWallet} />;
+    return <AuthForm onSignUp={signUp} onSignIn={signIn} onConnectWallet={connectWallet} onLoginAsGuest={loginAsGuest} />;
   }
 
   if (isOnboardingRoute) {
-    return <Outlet />;
+    return <Outlet />
   }
 
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar wallet={user?.wallet} email={user?.email} onSignOut={signOut} />
+        <Topbar wallet={user?.wallet} email={user?.email} onSignOut={signOut} isGuest={isGuest} />
         <div className="flex min-h-0 flex-1">
           <main className="flex-1 min-w-0 overflow-y-auto">
             <Outlet />
@@ -84,10 +90,12 @@ function AuthForm({
   onSignUp,
   onSignIn,
   onConnectWallet,
+  onLoginAsGuest,
 }: {
   onSignUp: (e?: React.MouseEvent) => Promise<void>;
   onSignIn: (e?: React.MouseEvent) => Promise<void>;
   onConnectWallet: (e?: React.MouseEvent) => Promise<void>;
+  onLoginAsGuest: () => void;
 }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -117,6 +125,13 @@ function AuthForm({
         >
           <Wallet className="h-4 w-4" />
           <span>Connect with wallet</span>
+        </button>
+
+        <button
+          onClick={onLoginAsGuest}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-md border border-border/50 bg-transparent px-4 py-2 text-xs text-muted-foreground hover:text-foreground hover:border-border transition"
+        >
+          Continue as Guest
         </button>
       </div>
     </div>

@@ -10,8 +10,8 @@ export const Route = createFileRoute("/app/feed")({
 function FeedPage() {
   const { snapshot } = useMarketSnapshot();
   const items = snapshot?.feedItems.length
-    ? [...snapshot.feedItems, ...snapshot.feedItems]
-    : [...fallbackFeedItems, ...fallbackFeedItems];
+    ? snapshot.feedItems
+    : fallbackFeedItems;
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-4xl mx-auto">
@@ -21,7 +21,7 @@ function FeedPage() {
       </p>
       <div className="space-y-4">
         {items.map((item, i) => (
-          <SignalCard key={`${item.id}-${i}`} item={item} index={i} />
+          <SignalCard key={item.id} item={item} index={i} />
         ))}
       </div>
     </div>

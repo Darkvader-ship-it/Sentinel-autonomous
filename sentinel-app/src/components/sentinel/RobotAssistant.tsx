@@ -4,24 +4,26 @@ import { X, Send, Sparkles } from "lucide-react";
 import botImg from "@/assets/sentinel-bot.png";
 
 const suggestions = [
+  "Is this real data?",
   "What is Sentinel?",
-  "Why is ETH dropping?",
+  "What makes Sentinel different?",
   "What is an ETF outflow?",
   "How do I execute a trade?",
-  "What does 'risk score' mean?",
 ];
 
 const replies: Record<string, string> = {
+  "Is this real data?":
+    "Sentinel runs in Demo Mode for evaluation. CoinGecko prices are live if their API responds; ETF flow data from SoSoValue and DEX execution are simulated with realistic synthetic data. Every simulated source is labeled '(Demo Mode)' in the Data Sources panel. Set real API keys in .env to activate live data across all pipelines — the architecture handles real and fallback sources identically.",
   "What is Sentinel?":
     "Sentinel is your autonomous market analyst. I watch ETF flows, macro news, and on-chain activity 24/7, then translate them into plain-English actions. Think of me as a hedge-fund desk that sits in your pocket.",
-  "Why is ETH dropping?":
-    "Right now ETH is consolidating after a +2.1% run. The pressure is mostly from BTC ETF outflows ($312M / 48h) reducing risk appetite across majors. On-chain whale flows are still net positive — so this looks like a pause, not a trend break.",
+  "What makes Sentinel different?":
+    "Most crypto tools just show data — prices, charts, TVL. Sentinel goes further: it tells you what happened, why it matters for YOUR portfolio, what you should do about it, and lets you execute in one click. It replaces 6 separate tools with a single intelligence terminal. The edge is the analysis engine: multi-factor risk scoring, causal narrative synthesis, and SoDEX execution — all in one place.",
   "What is an ETF outflow?":
     "An ETF outflow means more investors are selling shares of an exchange-traded fund than buying. For BTC ETFs, large outflows often signal institutions reducing exposure, which historically pulls spot prices lower in the short term.",
   "How do I execute a trade?":
-    "When you see a card with an [Execute] button, click it. A modal opens showing the route, slippage, and expected outcome through SoDEX. Confirm — and the trade fires from your connected wallet. No CEX needed.",
+    "When you see a card with an [Execute] button, click it. A modal opens showing the route, slippage, and expected outcome through SoDEX. Confirm — and the trade fires. No CEX needed.",
   "What does 'risk score' mean?":
-    "Risk score (0-100) is my real-time read on how dangerous markets are right now. Below 30: calm. 30-60: normal. 60-80: elevated — be cautious. Above 80: storm — consider hedging or moving to stables.",
+    "Risk score (0-100) is my real-time read on how dangerous markets are right now. Below 30: calm. 30-60: normal. 60-80: elevated — be cautious. Above 80: storm — consider hedging or moving to stables. The score is built from 4 factors: ETF stress (30%), macro catalysts (25%), liquidity & volatility (25%), and signal density (20%).",
 };
 
 export function RobotAssistant() {

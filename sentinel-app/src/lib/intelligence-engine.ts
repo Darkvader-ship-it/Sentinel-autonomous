@@ -135,21 +135,6 @@ function buildFeedItems(
   }));
 }
 
-function calculatePortfolioStats(context: MarketContext) {
-  const btcChange = context.prices.find(p => p.symbol === "BTC")?.change24h ?? 0;
-  const solChange = context.prices.find(p => p.symbol === "SOL")?.change24h ?? 0;
-  
-  // Real calculation: Weighted average of majors
-  const totalChange = (btcChange * 0.6) + (solChange * 0.4);
-  const totalValue = seedPortfolio.reduce((acc, p) => acc + p.value, 0);
-  
-  return {
-    totalValue: totalValue * (1 + totalChange / 100),
-    pnl24h: totalValue * (totalChange / 100),
-    pnlPct: totalChange
-  };
-}
-
 async function composeSnapshot(
   env: unknown,
   options: { forceRefresh?: boolean } = {},
@@ -164,7 +149,6 @@ async function composeSnapshot(
   const marketConditions = buildMarketConditions(risk);
   const recommendations = buildRecommendations(context, signals, risk, profile.riskProfile);
   const reasoning = buildAnalysis(context, signals, risk, recommendations, profile.riskProfile);
-  const stats = calculatePortfolioStats(context);
 
   const generatedFeedItems = buildFeedItems(
     signals.length ? signals : buildStructuredSignals(context),
@@ -180,10 +164,30 @@ async function composeSnapshot(
     feedItems: generatedFeedItems.length ? generatedFeedItems : seedFeedItems,
     opportunities: buildDynamicOpportunities(context) as any,
     alerts: storedAlerts.length ? storedAlerts : [],
-    portfolio: seedPortfolio.map(p => ({ ...p, value: p.value * (1 + (context.prices.find(pr => pr.symbol === p.symbol)?.change24h ?? 0) / 100) })),
+    portfolio: {
+      ...seedPortfolio,
+      holdings: seedPortfolio.holdings.map(h => ({
+        ...h,
+        value: Math.round(h.value * (1 + (context.prices.find(pr => pr.symbol === h.symbol)?.change24h ?? 0) / 100)),
+        change: context.prices.find(pr => pr.symbol === h.symbol)?.change24h ?? h.change,
+      })),
+      totalValue: Math.round(seedPortfolio.holdings.reduce((sum, h) => 
+        sum + h.value * (1 + (context.prices.find(pr => pr.symbol === h.symbol)?.change24h ?? 0) / 100), 0
+      )),
+      pnl24h: Math.round(seedPortfolio.holdings.reduce((sum, h) => {
+        const chg = context.prices.find(pr => pr.symbol === h.symbol)?.change24h ?? h.change;
+        return sum + h.value * chg / 100;
+      }, 0)),
+    },
     portfolioHistory: seedPortfolioHistory,
     tickers: context.prices.map(p => ({ symbol: p.symbol, price: p.price, change: p.change24h })),
-    riskWarnings: buildRiskWarnings(risk.score),
+    riskWarnings: buildRiskWarnings(risk.score, {
+      etfOutflowPct: context.etfOutflowPct,
+      btcVolatility: context.btcVolatility,
+      liquidityChangePct: context.liquidityChangePct,
+      unlockPressure: context.unlockPressure,
+      macroEvents: context.macroEvents,
+    }),
     reasoning,
     executions,
     profile,

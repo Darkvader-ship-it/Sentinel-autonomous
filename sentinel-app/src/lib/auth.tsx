@@ -1,7 +1,5 @@
 import { createContext, useContext, useMemo, useCallback, useState, useEffect } from "react";
-import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
-import { SmartWalletsProvider } from "@privy-io/react-auth/smart-wallets";
-import { base } from "viem/chains";
+import { PrivyProvider, usePrivy, useLogin } from "@privy-io/react-auth";
 
 interface User {
   id: string;
@@ -15,28 +13,40 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isReady: boolean;
+  isGuest: boolean;
   signUp: (e?: React.MouseEvent) => Promise<void>;
   signIn: (e?: React.MouseEvent) => Promise<void>;
   connectWallet: (e?: React.MouseEvent) => Promise<void>;
   unlinkWallet: (address: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateUser: (updates: Partial<User>) => void;
+  loginAsGuest: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const noop = async () => {};
 
+const GUEST_USER: User = {
+  id: "guest",
+  email: "guest@sentinel.demo",
+  wallet: "0x4a...e8f2",
+  name: "Demo Trader",
+  onboardingComplete: true,
+};
+
 const SSR_CONTEXT: AuthContextType = {
   user: null,
   isLoading: true,
   isReady: false,
+  isGuest: false,
   signUp: noop,
   signIn: noop,
   connectWallet: noop,
   unlinkWallet: noop,
   signOut: noop,
   updateUser: () => {},
+  loginAsGuest: () => {},
 };
 
 export function useAuth() {
@@ -62,8 +72,6 @@ function setOnboardingComplete(value: boolean) {
 const PRIVY_CONFIG = {
   loginMethods: ["email", "wallet", "google"] as ("email" | "wallet" | "google")[],
   appearance: { theme: "dark" as const, accentColor: "#676FFF" as `#${string}` },
-  defaultChain: base,
-  supportedChains: [base],
   embeddedWallets: {
     ethereum: { createOnLogin: "all-users" as const },
     solana: { createOnLogin: "all-users" as const },
@@ -71,10 +79,20 @@ const PRIVY_CONFIG = {
 };
 
 function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
-  const { user: privyUser, ready, authenticated, login, logout, linkWallet, unlinkWallet: privyUnlinkWallet } = usePrivy();
+  const { user: privyUser, ready, authenticated, logout, unlinkWallet: privyUnlinkWallet } = usePrivy();
+  const { login: privyLogin } = useLogin();
   const [tick, setTick] = useState(0);
+  const [guest, setGuest] = useState(() => localStorage.getItem("sentinel_guest") === "true");
+  const [privyTimedOut, setPrivyTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (ready || guest) return;
+    const id = setTimeout(() => setPrivyTimedOut(true), 4000);
+    return () => clearTimeout(id);
+  }, [ready, guest]);
 
   const user: User | null = useMemo(() => {
+    if (guest) return GUEST_USER;
     if (!privyUser || !authenticated) return null;
     return {
       id: privyUser.id,
@@ -83,31 +101,34 @@ function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
       name: privyUser.email?.address?.split("@")[0] ?? null,
       onboardingComplete: getOnboardingComplete(),
     };
-  }, [privyUser, authenticated, tick]);
+  }, [guest, privyUser, authenticated, tick]);
+
+  const loginAsGuest = useCallback(() => {
+    localStorage.setItem("sentinel_guest", "true");
+    setGuest(true);
+  }, []);
 
   const signIn = useCallback(
     async (e?: React.MouseEvent) => {
-      await login(e);
+      localStorage.removeItem("sentinel_guest");
+      setGuest(false);
+      privyLogin(e);
     },
-    [login],
+    [privyLogin],
   );
 
   const signUp = useCallback(
     async (e?: React.MouseEvent) => {
-      await login(e);
+      privyLogin(e);
     },
-    [login],
+    [privyLogin],
   );
 
   const connectWallet = useCallback(
     async (e?: React.MouseEvent) => {
-      if (!authenticated) {
-        await login({ loginMethods: ["wallet"] });
-      } else {
-        await linkWallet(e);
-      }
+      privyLogin({ loginMethods: ["wallet"] });
     },
-    [authenticated, login, linkWallet],
+    [privyLogin],
   );
 
   const unlinkWallet = useCallback(
@@ -120,6 +141,8 @@ function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     localStorage.removeItem("sentinel_onboarding");
+    localStorage.removeItem("sentinel_guest");
+    setGuest(false);
     await logout();
   }, [logout]);
 
@@ -133,16 +156,18 @@ function PrivyAuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextType>(
     () => ({
       user,
-      isLoading: !ready,
-      isReady: ready,
+      isLoading: !ready && !guest && !privyTimedOut,
+      isReady: ready || guest || privyTimedOut,
+      isGuest: guest,
       signUp,
       signIn,
       connectWallet,
       unlinkWallet,
       signOut,
       updateUser,
+      loginAsGuest,
     }),
-    [user, ready, signUp, signIn, connectWallet, unlinkWallet, signOut, updateUser],
+    [user, ready, guest, privyTimedOut, signUp, signIn, connectWallet, unlinkWallet, signOut, updateUser, loginAsGuest],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -163,11 +188,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <PrivyProvider appId={appId} config={PRIVY_CONFIG}>
-      <SmartWalletsProvider>
-        <PrivyAuthProvider>
-          {children}
-        </PrivyAuthProvider>
-      </SmartWalletsProvider>
+      <PrivyAuthProvider>
+        {children}
+      </PrivyAuthProvider>
     </PrivyProvider>
   );
 }

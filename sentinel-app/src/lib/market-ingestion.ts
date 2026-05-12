@@ -153,23 +153,43 @@ async function fetchDefiLlamaSummary() {
   );
 }
 
-async function fetchSoSoValueContext(env: unknown) {
-  const endpointCandidates = [
-    envValue(env, "SOSOVALUE_MARKET_URL"),
-    envValue(env, "SOSOVALUE_API_URL"),
-    envValue(env, "SOSOVALUE_CONTEXT_URL"),
-  ].filter((candidate): candidate is string => Boolean(candidate));
+async function fetchSoSoValueContext(env: unknown): Promise<{
+  data: Record<string, unknown> | null;
+  live: boolean;
+}> {
   const apiKey = envValue(env, "SOSOVALUE_API_KEY");
+  const customUrl = envValue(env, "SOSOVALUE_API_URL");
+  const endpoints = customUrl
+    ? [customUrl]
+    : [
+        "https://openapi.sosovalue.com/openapi/v1/etf/flow/btc",
+        "https://openapi.sosovalue.com/openapi/v1/market/overview",
+        "https://openapi.sosovalue.com/openapi/v1",
+      ];
 
-  for (const endpoint of endpointCandidates) {
-    const payload = await fetchJson<Record<string, unknown>>(endpoint, {
-      timeoutMs: 4500,
-      headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
-    });
-    if (payload) return payload;
+  if (apiKey) {
+    for (const endpoint of endpoints) {
+      const payload = await fetchJson<Record<string, unknown>>(endpoint, {
+        timeoutMs: 4500,
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (payload) return { data: payload, live: true };
+    }
   }
 
-  return null;
+  // Generate synthetic ETF flow data for demo mode
+  return {
+    data: {
+      etfOutflowPct: 6.8 + Math.random() * 8,
+      narrative: "BTC ETF flows showing mixed signals with moderate institutional rotation.",
+      macroEvents: [
+        "CPI print due in 3 hours",
+        "Weekly options expiry settlement",
+        "US equities session correlation",
+      ],
+    },
+    live: false,
+  };
 }
 
 function priceFromTickers(symbol: string): { price: number; change24h: number } {
@@ -185,11 +205,13 @@ export async function ingestMarketContext(
   env: unknown,
   options: { forceRefresh?: boolean } = {},
 ): Promise<MarketContext> {
-  const [coinGecko, defiLlama, soSoValue] = await Promise.all([
+  const [coinGecko, defiLlama, soSoResult] = await Promise.all([
     fetchCoinGeckoPrices(),
     fetchDefiLlamaSummary(),
     fetchSoSoValueContext(env),
   ]);
+  const soSoValue = soSoResult.data;
+  const soSoLive = soSoResult.live;
   const dxyPrice = getDxyIndex();
 
   const btc = coinGecko?.find((entry) => entry.id === "bitcoin");
@@ -256,6 +278,11 @@ export async function ingestMarketContext(
       name: "DefiLlama",
       role: "supplemental" as const,
       note: defiLlama ? "Live liquidity data" : "Static liquidity fallback",
+    },
+    {
+      name: "SoSoValue",
+      role: "supplemental" as const,
+      note: soSoLive ? "Live ETF flow data" : "Simulated ETF flow data (Demo Mode)",
     },
     { name: "Sentinel", role: "supplemental" as const, note: "Multi-factor heuristic analysis" },
   ];

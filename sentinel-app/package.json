@@ -1,5 +1,5 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "sentinel",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -9,10 +9,10 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "vercel-build": "npm run build"
   },
   "dependencies": {
-    "@cloudflare/vite-plugin": "^1.25.5",
     "@hookform/resolvers": "^5.2.2",
     "@privy-io/react-auth": "^3.24.0",
     "@radix-ui/react-accordion": "^1.2.12",

@@ -129,12 +129,12 @@ export const portfolio = {
   pnl7d: -2_140,
   pnl7dPct: -1.15,
   holdings: [
-    { symbol: "ETH", name: "Ethereum", value: 64_200, allocation: 34.8, change: 2.1 },
-    { symbol: "BTC", name: "Bitcoin", value: 48_900, allocation: 26.5, change: -0.8 },
-    { symbol: "SOL", name: "Solana", value: 28_100, allocation: 15.2, change: 4.6 },
-    { symbol: "USDC", name: "USD Coin", value: 22_000, allocation: 11.9, change: 0.0 },
-    { symbol: "FET", name: "Fetch.ai", value: 12_400, allocation: 6.7, change: 8.2 },
-    { symbol: "ONDO", name: "Ondo", value: 8_720, allocation: 4.7, change: 1.4 },
+    { symbol: "ETH", name: "Ethereum", value: 64_200, balance: 19.55, allocation: 34.8, change: 2.1 },
+    { symbol: "BTC", name: "Bitcoin", value: 48_900, balance: 0.507, allocation: 26.5, change: -0.8 },
+    { symbol: "SOL", name: "Solana", value: 28_100, balance: 128.5, allocation: 15.2, change: 4.6 },
+    { symbol: "USDC", name: "USD Coin", value: 22_000, balance: 22000, allocation: 11.9, change: 0.0 },
+    { symbol: "FET", name: "Fetch.ai", value: 12_400, balance: 8732, allocation: 6.7, change: 8.2 },
+    { symbol: "ONDO", name: "Ondo", value: 8_720, balance: 4360, allocation: 4.7, change: 1.4 },
   ],
   exposure: [
     { sector: "Majors", value: 61.3 },

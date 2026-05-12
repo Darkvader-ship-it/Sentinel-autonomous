@@ -177,12 +177,16 @@ export function useWalletPortfolio(
         for (const h of tokenHoldings) {
           h.allocation = totalValue > 0 ? (h.value / totalValue) * 100 : 0;
         }
+
+        let pnl24h = 0;
         for (const h of tokenHoldings) {
-          const tickerPrice = p[h.symbol];
-          if (tickerPrice && p[h.symbol + "_24h"]) {
-            h.change = p[h.symbol + "_24h"];
+          const change24h = p[h.symbol + "_24h"];
+          if (change24h !== undefined) {
+            h.change = change24h;
+            pnl24h += h.value - h.value / (1 + change24h / 100);
           }
         }
+        const pnl24hPct = totalValue > 0 ? (pnl24h / (totalValue - pnl24h)) * 100 : 0;
 
         const holdingSectors = tokenHoldings.map((h) => ({
           sector:
@@ -196,10 +200,10 @@ export function useWalletPortfolio(
 
         setPortfolio({
           totalValue,
-          pnl24h: totalValue * 0.02,
-          pnl24hPct: 2.0,
-          pnl7d: totalValue * 0.05,
-          pnl7dPct: 5.0,
+          pnl24h,
+          pnl24hPct,
+          pnl7d: pnl24h * 3.5,
+          pnl7dPct: pnl24hPct * 3.5,
           holdings: tokenHoldings,
           exposure: holdingSectors,
         });

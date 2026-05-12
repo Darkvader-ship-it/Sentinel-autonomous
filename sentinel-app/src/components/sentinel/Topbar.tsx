@@ -12,10 +12,12 @@ export function Topbar({
   wallet,
   email,
   onSignOut,
+  isGuest,
 }: {
   wallet?: string | null;
   email?: string;
   onSignOut?: () => void | Promise<void>;
+  isGuest?: boolean;
 }) {
   const { snapshot } = useMarketSnapshot();
   const tickers = snapshot?.tickers ?? fallbackTickers;
@@ -72,6 +74,15 @@ export function Topbar({
             </span>
             <span className="font-mono text-xs font-semibold text-warning">{riskLabel}</span>
           </div>
+          {isGuest && (
+            <div className="flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1 shadow-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">Demo</span>
+            </div>
+          )}
           <button className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary transition">
             <Wallet className="h-3.5 w-3.5" />
             <span className="font-mono">
