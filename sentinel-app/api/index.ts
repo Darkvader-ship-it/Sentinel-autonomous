@@ -1,4 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "http";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function collectBody(req: IncomingMessage): Promise<string | undefined> {
   if (req.method === "GET" || req.method === "HEAD") return Promise.resolve(undefined);
@@ -22,7 +26,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   });
 
   try {
-    const serverFetch = (await import("../dist/server/index.js")).default.fetch;
+    const serverPath = resolve(__dirname, "..", "dist", "server", "server.js");
+    const mod = await import(serverPath);
+    const serverFetch = mod.default?.fetch ?? mod.fetch ?? mod.handleRequest;
     const response = await serverFetch(request, process.env, {});
     res.statusCode = response.status;
     response.headers.forEach((value, key) => res.setHeader(key, value));
