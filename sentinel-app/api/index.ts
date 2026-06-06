@@ -31,7 +31,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const serverFetch = mod.default?.fetch ?? mod.fetch ?? mod.handleRequest;
     const response = await serverFetch(request, process.env, {});
     res.statusCode = response.status;
-    response.headers.forEach((value, key) => res.setHeader(key, value));
+    response.headers.forEach((value: string, key: string) => res.setHeader(key, value));
     res.end(await response.text());
   } catch (error) {
     console.error(error);
