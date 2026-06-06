@@ -52,41 +52,7 @@ const DEFAULT_ALERTS: AlertRecord[] = [
   },
 ];
 
-const DEFAULT_EXECUTIONS: ExecutionRecord[] = [
-  {
-    id: "exec-1",
-    status: "filled",
-    from: "USDC",
-    to: "ETH",
-    sizeUsd: 8200,
-    route: "SoDEX · 3 hops",
-    slippageBps: 8,
-    estimatedFeesUsd: 5.06,
-    createdAt: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "exec-2",
-    status: "filled",
-    from: "BTC",
-    to: "USDC",
-    sizeUsd: 5600,
-    route: "SoDEX · direct",
-    slippageBps: 6,
-    estimatedFeesUsd: 3.63,
-    createdAt: new Date(Date.now() - 44 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "exec-3",
-    status: "pending",
-    from: "USDC",
-    to: "FET",
-    sizeUsd: 2400,
-    route: "SoDEX · 2 hops",
-    slippageBps: 11,
-    estimatedFeesUsd: 2.07,
-    createdAt: new Date().toISOString(),
-  },
-];
+const DEFAULT_EXECUTIONS: ExecutionRecord[] = [];
 
 function resolveNamespace(env: unknown): KeyValueNamespace | null {
   if (!env || typeof env !== "object") return null;

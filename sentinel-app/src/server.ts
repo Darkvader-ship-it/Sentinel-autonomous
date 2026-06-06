@@ -219,6 +219,81 @@ async function handleApiRoute(request: Request, url: URL, env: unknown): Promise
     return Response.json(await store.listAlerts());
   }
 
+  if (url.pathname === "/app/api/strategy/parse" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    const { parseNaturalLanguage, addStrategy } = await import("@/lib/strategy-engine");
+    const input = typeof body.input === "string" ? body.input : "";
+    if (!input.trim()) {
+      return Response.json({ error: "No input provided" }, { status: 400 });
+    }
+    const strategy = addStrategy(input);
+    return Response.json(strategy);
+  }
+
+  if (url.pathname === "/app/api/strategy/evaluate" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    const { evaluateStrategy } = await import("@/lib/strategy-engine");
+    const snapshot = await getMarketSnapshot({ env });
+    const strategy = body.strategy as any;
+    if (!strategy?.condition) {
+      return Response.json({ error: "Invalid strategy" }, { status: 400 });
+    }
+    const triggered = evaluateStrategy(strategy, snapshot as any, snapshot.signals ?? []);
+    return Response.json({ triggered });
+  }
+
+  if (url.pathname === "/app/api/telegram/send" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    const { sendTelegramAlert } = await import("@/lib/telegram");
+    const message = typeof body.message === "string" ? body.message : "";
+    if (!message.trim()) {
+      return Response.json({ error: "No message provided" }, { status: 400 });
+    }
+    const sent = await sendTelegramAlert(message);
+    return Response.json({ sent });
+  }
+
+  if (url.pathname === "/app/api/debug/sosovalue" && request.method === "GET") {
+    const { ingestMarketContext } = await import("@/lib/market-ingestion");
+    try {
+      const context = await ingestMarketContext(env, { forceRefresh: true });
+      const soSoSource = context.sourceStack.find((s) => s.name === "SoSoValue");
+      return Response.json({
+        live: soSoSource?.note.includes("Live") ?? false,
+        note: soSoSource?.note ?? "not found",
+        endpoints: context.sourceStack.map((s) => ({ name: s.name, note: s.note })),
+        etfOutflowPct: context.etfOutflowPct,
+        narrative: context.narrative.slice(0, 100),
+        fetchedAt: context.fetchedAt,
+      });
+    } catch (e) {
+      return Response.json({ error: String(e) }, { status: 500 });
+    }
+  }
+
+  if (url.pathname === "/app/api/debug/env" && request.method === "GET") {
+    return Response.json({
+      hasSosovalueKey: typeof (env as Record<string, unknown>).SOSOVALUE_API_KEY === "string" && !!(env as Record<string, unknown>).SOSOVALUE_API_KEY,
+      keyLength: ((env as Record<string, unknown>).SOSOVALUE_API_KEY as string)?.length ?? 0,
+      hasSosovalueUrl: typeof (env as Record<string, unknown>).SOSOVALUE_API_URL === "string",
+      source: typeof process !== "undefined" && process.env ? "process.env" : "env-param",
+      nodeEnv: typeof process !== "undefined" && process.env ? (process.env.NODE_ENV ?? "not set") : "unknown",
+    });
+  }
+
+  if (url.pathname === "/app/api/sentiment" && request.method === "GET") {
+    const { fetchSocialSentiment } = await import("@/lib/social-sentiment");
+    const snapshot = await getMarketSnapshot({ env });
+    const sentiment = fetchSocialSentiment(
+      snapshot.tickers.map((t: { symbol: string; price: number; change: number }) => ({
+        symbol: t.symbol,
+        price: t.price,
+        change24h: t.change,
+      })),
+    );
+    return Response.json(sentiment);
+  }
+
   return new Response(JSON.stringify({ error: "Not found" }), {
     status: 404,
     headers: { "content-type": "application/json; charset=utf-8" },

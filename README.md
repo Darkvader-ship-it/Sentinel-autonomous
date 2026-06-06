@@ -6,7 +6,7 @@
 >
 > **Wave 1** (✅ Complete): Real-time market data ingestion, multi-factor risk engine, AI-generated intelligence feed, portfolio tracking, one-click swap execution via SoDEX.
 >
-> **Wave 2** (Roadmap): AI trading copilot with natural-language strategy builder, Telegram alerts, social sentiment cross-referencing.
+> **Wave 2** (✅ Complete): AI trading copilot with natural-language strategy builder, Telegram alerts, social sentiment cross-referencing, backtesting engine.
 >
 > **Wave 3** (Vision): Autonomous treasury management agent, institutional-grade risk monitoring dashboard, on-chain infrastructure for programmatic trading.
 
@@ -24,6 +24,11 @@ Sentinel is a unified intelligence terminal that **ingests, analyzes, and execut
 
 ```
 External Data ──► Risk Engine ──► AI Analysis ──► Actionable Feed ──► One-Click Execution
+                                                      │
+                                                      ├──► AI Copilot (Natural-Language Strategies)
+                                                      ├──► Telegram Alerts
+                                                      ├──► Social Sentiment
+                                                      └──► Backtesting Engine
 ```
 
 It replaces six separate tools (pricing dashboard, ETF tracker, macro calendar, risk calculator, portfolio tracker, DEX aggregator) with a single interface that explains *what matters right now* and lets you act instantly.
@@ -135,6 +140,10 @@ It replaces six separate tools (pricing dashboard, ETF tracker, macro calendar, 
 | `src/lib/intelligence-engine.ts` | Orchestrates snapshot composition |
 | `src/lib/sentinel-store.ts` | Persistence (Workers KV / in-memory) |
 | `src/lib/execution-engine.ts` | Trade execution dispatch → DEX clients |
+| `src/lib/strategy-engine.ts` | Natural-language strategy parser + evaluation engine |
+| `src/lib/backtest-engine.ts` | Historical strategy backtesting against 7-day window |
+| `src/lib/telegram.ts` | Telegram bot alert integration |
+| `src/lib/social-sentiment.ts` | Social sentiment data synthesis (mentions, scores, trends) |
 | `src/server.ts` | Cloudflare Workers entry + API route handler |
 
 ---
@@ -323,12 +332,12 @@ npx wrangler deploy
 
 ## Future Vision
 
-### Wave 2 (Next)
+### Wave 2 (✅ Complete)
 
-- **AI Trading Copilot**: Natural-language strategy builder — "alert me when ETH/BTC ratio crosses 0.05 with volume > $1B"
-- **Telegram Alerts**: Push notifications to Telegram for critical signals
-- **Social Sentiment**: Cross-reference on-chain data with social sentiment indices
-- **Backtesting Engine**: Test strategies against historical market data
+- **AI Trading Copilot** (`/app/copilot`): Natural-language strategy builder — type "alert me when ETH/BTC ratio crosses 0.05" and Sentinel parses it into live-evaluated rules. Chat interface with persistent strategy management (enable/disable/delete).
+- **Telegram Alerts** (Settings page): Configure bot token + chat ID to push Sentinel alerts to Telegram. Test connection button included.
+- **Social Sentiment** (`GET /app/api/sentiment`): Cross-reference on-chain data with social sentiment indices (mention counts, sentiment scores, trending assets per ticker).
+- **Backtesting Engine** (`/app/backtest`): Test any Copilot strategy against 7 days of historical data. Bar chart visualization with daily trigger breakdown.
 
 ### Wave 3 (Long-term)
 

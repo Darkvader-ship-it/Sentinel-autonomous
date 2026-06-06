@@ -19,6 +19,8 @@ import { Route as AppPortfolioRouteImport } from './routes/app.portfolio'
 import { Route as AppOnboardingRouteImport } from './routes/app.onboarding'
 import { Route as AppFeedRouteImport } from './routes/app.feed'
 import { Route as AppExecutionRouteImport } from './routes/app.execution'
+import { Route as AppCopilotRouteImport } from './routes/app.copilot'
+import { Route as AppBacktestRouteImport } from './routes/app.backtest'
 
 const AppRoute = AppRouteImport.update({
   id: '/app',
@@ -70,10 +72,22 @@ const AppExecutionRoute = AppExecutionRouteImport.update({
   path: '/execution',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCopilotRoute = AppCopilotRouteImport.update({
+  id: '/copilot',
+  path: '/copilot',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppBacktestRoute = AppBacktestRouteImport.update({
+  id: '/backtest',
+  path: '/backtest',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/app/backtest': typeof AppBacktestRoute
+  '/app/copilot': typeof AppCopilotRoute
   '/app/execution': typeof AppExecutionRoute
   '/app/feed': typeof AppFeedRoute
   '/app/onboarding': typeof AppOnboardingRoute
@@ -85,6 +99,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app/backtest': typeof AppBacktestRoute
+  '/app/copilot': typeof AppCopilotRoute
   '/app/execution': typeof AppExecutionRoute
   '/app/feed': typeof AppFeedRoute
   '/app/onboarding': typeof AppOnboardingRoute
@@ -98,6 +114,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/app/backtest': typeof AppBacktestRoute
+  '/app/copilot': typeof AppCopilotRoute
   '/app/execution': typeof AppExecutionRoute
   '/app/feed': typeof AppFeedRoute
   '/app/onboarding': typeof AppOnboardingRoute
@@ -112,6 +130,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/app/backtest'
+    | '/app/copilot'
     | '/app/execution'
     | '/app/feed'
     | '/app/onboarding'
@@ -123,6 +143,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/app/backtest'
+    | '/app/copilot'
     | '/app/execution'
     | '/app/feed'
     | '/app/onboarding'
@@ -135,6 +157,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/app/backtest'
+    | '/app/copilot'
     | '/app/execution'
     | '/app/feed'
     | '/app/onboarding'
@@ -222,10 +246,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppExecutionRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/copilot': {
+      id: '/app/copilot'
+      path: '/copilot'
+      fullPath: '/app/copilot'
+      preLoaderRoute: typeof AppCopilotRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/backtest': {
+      id: '/app/backtest'
+      path: '/backtest'
+      fullPath: '/app/backtest'
+      preLoaderRoute: typeof AppBacktestRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppBacktestRoute: typeof AppBacktestRoute
+  AppCopilotRoute: typeof AppCopilotRoute
   AppExecutionRoute: typeof AppExecutionRoute
   AppFeedRoute: typeof AppFeedRoute
   AppOnboardingRoute: typeof AppOnboardingRoute
@@ -237,6 +277,8 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBacktestRoute: AppBacktestRoute,
+  AppCopilotRoute: AppCopilotRoute,
   AppExecutionRoute: AppExecutionRoute,
   AppFeedRoute: AppFeedRoute,
   AppOnboardingRoute: AppOnboardingRoute,

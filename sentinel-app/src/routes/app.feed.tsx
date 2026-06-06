@@ -9,9 +9,7 @@ export const Route = createFileRoute("/app/feed")({
 
 function FeedPage() {
   const { snapshot } = useMarketSnapshot();
-  const items = snapshot?.feedItems.length
-    ? snapshot.feedItems
-    : fallbackFeedItems;
+  const items = snapshot?.feedItems.length ? snapshot.feedItems : fallbackFeedItems;
 
   return (
     <div className="px-4 md:px-8 py-6 max-w-4xl mx-auto">

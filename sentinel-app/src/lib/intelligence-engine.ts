@@ -1,11 +1,28 @@
 import {
   feedItems as seedFeedItems,
   portfolio as seedPortfolio,
-  portfolioHistory as seedPortfolioHistory,
   riskWarnings as seedRiskWarnings,
   tickers as fallbackTickers,
   type FeedItem,
 } from "@/lib/mock-data";
+
+const DAY_MS = 86400000;
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function buildPortfolioHistory(currentValue: number): Array<{ day: string; value: number }> {
+  const now = Date.now();
+  const today = new Date(now).getDay();
+  const history: Array<{ day: string; value: number }> = [];
+  let val = currentValue;
+  for (let i = 6; i >= 0; i--) {
+    const dayIndex = (((today - i) % 7) + 7) % 7;
+    const label = DAYS[dayIndex];
+    history.push({ day: label, value: Math.round(val) });
+    const dailyChange = (Math.random() - 0.48) * currentValue * 0.02;
+    val = currentValue - (dailyChange * (i + 1)) / 7;
+  }
+  return history;
+}
 import { buildAnalysis } from "@/lib/analysis-engine";
 import { ingestMarketContext } from "@/lib/market-ingestion";
 import { buildRecommendations } from "@/lib/recommendation-engine";
@@ -53,13 +70,22 @@ function buildMarketConditions(risk: RiskSnapshot): MarketConditions {
   };
 }
 
-function buildDynamicOpportunities(context: MarketContext): Array<{ id: string; type: string; summary: string; explanation: string; severity: "LOW" | "MEDIUM" | "HIGH"; confidence: number }> {
-  const sol = context.prices.find(p => p.symbol === "SOL");
-  const fet = context.prices.find(p => p.symbol === "FET");
-  const btc = context.prices.find(p => p.symbol === "BTC");
-  
+function buildDynamicOpportunities(
+  context: MarketContext,
+): Array<{
+  id: string;
+  type: string;
+  summary: string;
+  explanation: string;
+  severity: "LOW" | "MEDIUM" | "HIGH";
+  confidence: number;
+}> {
+  const sol = context.prices.find((p) => p.symbol === "SOL");
+  const fet = context.prices.find((p) => p.symbol === "FET");
+  const btc = context.prices.find((p) => p.symbol === "BTC");
+
   const opportunities: any[] = [];
-  
+
   if (sol && sol.change24h > 2) {
     opportunities.push({
       id: "opp-sol",
@@ -67,10 +93,10 @@ function buildDynamicOpportunities(context: MarketContext): Array<{ id: string; 
       summary: "Solana Ecosystem Outperformance",
       explanation: "SOL is leading majors. Look for laggard rotations in JUP and PYTH.",
       severity: "MEDIUM",
-      confidence: 84
+      confidence: 84,
     });
   }
-  
+
   if (fet && fet.change24h > 3) {
     opportunities.push({
       id: "opp-ai",
@@ -78,33 +104,35 @@ function buildDynamicOpportunities(context: MarketContext): Array<{ id: string; 
       summary: "AI Sector Strength",
       explanation: "FET momentum suggests capital is rotating into decentralized compute themes.",
       severity: "MEDIUM",
-      confidence: 78
+      confidence: 78,
     });
   }
-  
+
   if (btc && btc.change24h < -2) {
     opportunities.push({
       id: "opp-hedge",
       type: "DEFENSIVE",
       summary: "Major Support Bounce Opportunity",
-      explanation: "BTC approaching oversold territory. Watch for 1h RSI reversal for a tactical long.",
+      explanation:
+        "BTC approaching oversold territory. Watch for 1h RSI reversal for a tactical long.",
       severity: "HIGH",
-      confidence: 72
+      confidence: 72,
     });
   }
-  
+
   // Always include a baseline if none triggered
   if (opportunities.length === 0) {
     opportunities.push({
       id: "opp-stables",
       type: "LIQUIDITY",
       summary: "Yield Optimization Window",
-      explanation: "Stablecoin demand is low. Opportunity to move dry powder into yield-bearing USDY.",
+      explanation:
+        "Stablecoin demand is low. Opportunity to move dry powder into yield-bearing USDY.",
       severity: "LOW",
-      confidence: 90
+      confidence: 90,
     });
   }
-  
+
   return opportunities;
 }
 
@@ -155,6 +183,32 @@ async function composeSnapshot(
     recommendations,
   );
 
+  const portfolio = {
+    ...seedPortfolio,
+    holdings: seedPortfolio.holdings.map((h) => ({
+      ...h,
+      value: Math.round(
+        h.value * (1 + (context.prices.find((pr) => pr.symbol === h.symbol)?.change24h ?? 0) / 100),
+      ),
+      change: context.prices.find((pr) => pr.symbol === h.symbol)?.change24h ?? h.change,
+    })),
+    totalValue: Math.round(
+      seedPortfolio.holdings.reduce(
+        (sum, h) =>
+          sum +
+          h.value *
+            (1 + (context.prices.find((pr) => pr.symbol === h.symbol)?.change24h ?? 0) / 100),
+        0,
+      ),
+    ),
+    pnl24h: Math.round(
+      seedPortfolio.holdings.reduce((sum, h) => {
+        const chg = context.prices.find((pr) => pr.symbol === h.symbol)?.change24h ?? h.change;
+        return sum + (h.value * chg) / 100;
+      }, 0),
+    ),
+  };
+
   return {
     generatedAt: new Date().toISOString(),
     sourceStack: context.sourceStack,
@@ -164,23 +218,9 @@ async function composeSnapshot(
     feedItems: generatedFeedItems.length ? generatedFeedItems : seedFeedItems,
     opportunities: buildDynamicOpportunities(context) as any,
     alerts: storedAlerts.length ? storedAlerts : [],
-    portfolio: {
-      ...seedPortfolio,
-      holdings: seedPortfolio.holdings.map(h => ({
-        ...h,
-        value: Math.round(h.value * (1 + (context.prices.find(pr => pr.symbol === h.symbol)?.change24h ?? 0) / 100)),
-        change: context.prices.find(pr => pr.symbol === h.symbol)?.change24h ?? h.change,
-      })),
-      totalValue: Math.round(seedPortfolio.holdings.reduce((sum, h) => 
-        sum + h.value * (1 + (context.prices.find(pr => pr.symbol === h.symbol)?.change24h ?? 0) / 100), 0
-      )),
-      pnl24h: Math.round(seedPortfolio.holdings.reduce((sum, h) => {
-        const chg = context.prices.find(pr => pr.symbol === h.symbol)?.change24h ?? h.change;
-        return sum + h.value * chg / 100;
-      }, 0)),
-    },
-    portfolioHistory: seedPortfolioHistory,
-    tickers: context.prices.map(p => ({ symbol: p.symbol, price: p.price, change: p.change24h })),
+    portfolio,
+    portfolioHistory: buildPortfolioHistory(portfolio.totalValue),
+    tickers: context.prices.map((p) => ({ symbol: p.symbol, price: p.price, change: p.change24h })),
     riskWarnings: buildRiskWarnings(risk.score, {
       etfOutflowPct: context.etfOutflowPct,
       btcVolatility: context.btcVolatility,

@@ -1,6 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { motion, useMotionValue, useTransform, animate } from "framer-motion";
-import { useEffect } from "react";
 import {
   LayoutDashboard,
   Radio,
@@ -10,6 +8,8 @@ import {
   ShieldAlert,
   Settings,
   Beaker,
+  Bot,
+  BarChart3,
 } from "lucide-react";
 import { Logo } from "./Logo";
 import { useMarketSnapshot } from "@/hooks/use-market-snapshot";
@@ -21,27 +21,20 @@ const nav = [
   { to: "/app/portfolio", label: "Portfolio", icon: Wallet },
   { to: "/app/execution", label: "Execution", icon: Zap },
   { to: "/app/risk", label: "Risk Sentinel", icon: ShieldAlert },
+  { to: "/app/copilot", label: "AI Copilot", icon: Bot },
+  { to: "/app/backtest", label: "Backtest", icon: BarChart3 },
   { to: "/app/settings", label: "Settings", icon: Settings },
 ];
-
-function AnimatedCount() {
-  const target = 12000 + Math.floor(Math.random() * 3000);
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, (v) => Math.round(v).toLocaleString());
-
-  useEffect(() => {
-    const controls = animate(count, target, { duration: 2.5, ease: "easeOut" });
-    return controls.stop;
-  }, [count, target]);
-
-  return <motion.span>{rounded}</motion.span>;
-}
 
 export function Sidebar() {
   const { snapshot } = useMarketSnapshot();
   const allFallback = snapshot?.sourceStack
-    ? snapshot.sourceStack.every(s => !s.note.toLowerCase().includes("live"))
+    ? snapshot.sourceStack.every((s) => !s.note.toLowerCase().includes("live"))
     : true;
+  const eventCount =
+    (snapshot?.signals.length ?? 0) +
+    (snapshot?.alerts.length ?? 0) +
+    (snapshot?.feedItems.length ?? 0);
 
   return (
     <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-border bg-surface/40 backdrop-blur-md">
@@ -69,7 +62,7 @@ export function Sidebar() {
           AI Monitoring Active
         </div>
         <div className="font-mono text-xs text-foreground/80">
-          <AnimatedCount /> events / 24h
+          {eventCount.toLocaleString()} events
         </div>
         {allFallback && (
           <div className="flex items-center gap-1.5 pt-1 border-t border-border/40 text-[10px] text-warning/80">

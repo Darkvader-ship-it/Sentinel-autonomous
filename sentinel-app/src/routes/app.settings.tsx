@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Wallet } from "lucide-react";
+import { Check, Wallet, Send, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useMarketSnapshot } from "@/hooks/use-market-snapshot";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useAuth } from "@/lib/auth";
+import { getTelegramConfig, setTelegramConfig, testTelegramConnection } from "@/lib/telegram";
 
 type SettingKey = "risk" | "interests" | "monitoring" | "notifications" | "wallet";
 
@@ -77,6 +78,26 @@ function Route_Component() {
   };
 
   const [saving, setSaving] = useState(false);
+  const [telegramToken, setTelegramToken] = useState(getTelegramConfig().botToken);
+  const [telegramChatId, setTelegramChatId] = useState(getTelegramConfig().chatId);
+  const [telegramEnabled, setTelegramEnabled] = useState(getTelegramConfig().enabled);
+  const [testingTelegram, setTestingTelegram] = useState(false);
+  const [telegramResult, setTelegramResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  const saveTelegram = () => {
+    setTelegramConfig({ botToken: telegramToken, chatId: telegramChatId, enabled: telegramEnabled });
+    toast.success("Telegram settings saved");
+  };
+
+  const testTelegram = async () => {
+    setTestingTelegram(true);
+    setTelegramResult(null);
+    const result = await testTelegramConnection(telegramToken, telegramChatId);
+    setTelegramResult(result);
+    setTestingTelegram(false);
+    if (result.ok) toast.success(result.message);
+    else toast.error(result.message);
+  };
 
   const save = async () => {
     setSaving(true);
@@ -123,6 +144,71 @@ function Route_Component() {
         >
           {saving ? "Saving…" : "Save profile"}
         </button>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card px-5 py-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Send className="h-4 w-4 text-primary" />
+            <span className="text-sm text-muted-foreground">Telegram Alerts</span>
+          </div>
+          <label className="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={telegramEnabled}
+              onChange={(e) => setTelegramEnabled(e.target.checked)}
+              className="rounded border-border"
+            />
+            Enabled
+          </label>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
+              Bot Token
+            </label>
+            <input
+              type="password"
+              value={telegramToken}
+              onChange={(e) => setTelegramToken(e.target.value)}
+              placeholder="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary/60"
+            />
+          </div>
+          <div>
+            <label className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1 block">
+              Chat ID
+            </label>
+            <input
+              type="text"
+              value={telegramChatId}
+              onChange={(e) => setTelegramChatId(e.target.value)}
+              placeholder="-1001234567890"
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary/60"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={saveTelegram}
+              className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition"
+            >
+              Save Telegram
+            </button>
+            <button
+              onClick={testTelegram}
+              disabled={testingTelegram || !telegramToken || !telegramChatId}
+              className="flex items-center gap-1 rounded-md border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-50 transition"
+            >
+              {testingTelegram ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+              Test Connection
+            </button>
+          </div>
+          {telegramResult && (
+            <p className={`text-xs ${telegramResult.ok ? "text-success" : "text-destructive"}`}>
+              {telegramResult.message}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="space-y-4">
